@@ -6,9 +6,17 @@
     <title>SOP Chatbot</title>
 </head>
 <body>
-    <h2>Welcome to the SOP Chatbot</h2>
-    <p>Upload SOP documents and chat with AI to get process guidance.</p>
-    <a href="{% url 'upload_sop' %}">Upload SOP</a> |
+    {% if user.is_authenticated %}
+    <p>Welcome, {{ user.username }}! (<a href="{% url 'logout' %}">Logout</a>)</p>
+
+    {% if user.is_admin %}
+        <a href="{% url 'upload_sop' %}">Upload SOP</a> |  <!-- ✅ Now only admins see this -->
+    {% endif %}
+
     <a href="{% url 'chatbot_page' %}">Chat with AI</a>
+{% else %}
+    <p>You are not logged in. <a href="{% url 'login' %}">Login</a> or <a href="{% url 'signup' %}">Signup</a></p>
+{% endif %}
+
 </body>
 </html>

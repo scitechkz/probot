@@ -137,3 +137,58 @@ def sop_chatbot(request):
             return JsonResponse({"error": f"Internal Server Error: {str(e)}"}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
+
+#allows only admin to upload SOP
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+def is_admin(user):
+    return user.is_authenticated and user.is_admin  # ✅ Admin check
+
+@login_required
+@user_passes_test(is_admin, login_url="home")  # ✅ Restrict SOP upload to admins
+def upload_sop(request):
+    if request.method == "POST":
+        form = SOPUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect("home")
+    else:
+        form = SOPUploadForm()
+    return render(request, "sop/upload_sop.html", {"form": form})
+
+@login_required
+def chatbot_page(request):
+    return render(request, "sop/chatbot.html")
+
+
+#adds sign up , login view
+
+from django.contrib.auth import login, authenticate, logout
+from django.shortcuts import render, redirect
+from .forms import SignupForm, LoginForm
+
+def signup_view(request):
+    if request.method == "POST":
+        form = SignupForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)  # ✅ Auto-login after signup
+            return redirect("home")  # ✅ Redirect to homepage
+    else:
+        form = SignupForm()
+    return render(request, "sop/signup.html", {"form": form})
+
+def login_view(request):
+    if request.method == "POST":
+        form = LoginForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            return redirect("home")  # ✅ Redirect to homepage
+    else:
+        form = LoginForm()
+    return render(request, "sop/login.html", {"form": form})
+
+def logout_view(request):
+    logout(request)
+    return redirect("home")  # ✅ Redirect to homepage after logout
