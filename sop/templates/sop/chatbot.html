@@ -10,24 +10,24 @@
     
     <div id="chatbox">
         <input type="text" id="user-input" placeholder="Ask a question..." required>
-        <button id="ask-button">Ask</button>  <!-- ✅ No onclick attribute -->
+        <button id="ask-button">Ask</button>  
+        <button id="voice-button">🎤 Speak</button>  <!-- ✅ New voice input button -->
     </div>
 
     <br>
     <div id="chat-response"></div>
 
-    <!-- ✅ Ensure script is at the bottom, before </body> -->
+    <!-- ✅ JavaScript for Voice Features -->
     <script>
-        document.getElementById("ask-button").addEventListener("click", async function sendMessage() {
-            let userInput = document.getElementById("user-input").value.trim();
-
+        // Function to send user input to chatbot
+        async function sendMessage(userInput) {
             if (!userInput) {
                 alert("Please enter a question!");
                 return;
             }
 
             try {
-                let response = await fetch("/api/chatbot/", {  // ✅ Correct URL
+                let response = await fetch("/api/chatbot/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ message: userInput })
@@ -36,21 +36,51 @@
                 let result = await response.json();
 
                 if (result.response) {
+                    let botResponse = result.response;
+
                     document.getElementById("chat-response").innerHTML += `
                         <p><b>You:</b> ${userInput}</p>
-                        <p><b>Bot:</b> ${result.response}</p>
+                        <p><b>Bot:</b> ${botResponse}</p>
                     `;
+
+                    speakResponse(botResponse);  // ✅ AI reads response aloud
                 } else {
                     alert("Error: " + result.error);
                 }
-
             } catch (error) {
                 alert("Error sending request. Check console for details.");
                 console.error(error);
             }
 
             document.getElementById("user-input").value = "";
+        }
+
+        // ✅ Add click event to "Ask" button
+        document.getElementById("ask-button").addEventListener("click", function() {
+            let userInput = document.getElementById("user-input").value.trim();
+            sendMessage(userInput);
         });
+
+        // ✅ Voice Input (Speech-to-Text)
+        document.getElementById("voice-button").addEventListener("click", function() {
+            let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "en-US";
+
+            recognition.onresult = function(event) {
+                let spokenText = event.results[0][0].transcript;
+                document.getElementById("user-input").value = spokenText;
+                sendMessage(spokenText);  // ✅ Send spoken question to chatbot
+            };
+
+            recognition.start();
+        });
+
+        // ✅ Read Response (Text-to-Speech)
+        function speakResponse(responseText) {
+            let speech = new SpeechSynthesisUtterance(responseText);
+            speech.lang = "en-US";
+            window.speechSynthesis.speak(speech);
+        }
     </script>
 
     <br>
