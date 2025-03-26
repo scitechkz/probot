@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOP Chatbot</title>
+</head>
+<body>
+    <h2>Chat with AI 🤖</h2>
+    
+    <div id="chatbox">
+        <input type="text" id="user-input" placeholder="Ask a question..." required>
+        <button id="ask-button">Ask</button>  <!-- ✅ No onclick attribute -->
+    </div>
+
+    <br>
+    <div id="chat-response"></div>
+
+    <!-- ✅ Ensure script is at the bottom, before </body> -->
+    <script>
+        document.getElementById("ask-button").addEventListener("click", async function sendMessage() {
+            let userInput = document.getElementById("user-input").value.trim();
+
+            if (!userInput) {
+                alert("Please enter a question!");
+                return;
+            }
+
+            try {
+                let response = await fetch("/api/chatbot/", {  // ✅ Correct URL
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: userInput })
+                });
+
+                let result = await response.json();
+
+                if (result.response) {
+                    document.getElementById("chat-response").innerHTML += `
+                        <p><b>You:</b> ${userInput}</p>
+                        <p><b>Bot:</b> ${result.response}</p>
+                    `;
+                } else {
+                    alert("Error: " + result.error);
+                }
+
+            } catch (error) {
+                alert("Error sending request. Check console for details.");
+                console.error(error);
+            }
+
+            document.getElementById("user-input").value = "";
+        });
+    </script>
+
+    <br>
+    <a href="{% url 'home' %}">Back to Home</a>
+</body>
+</html>
