@@ -90,10 +90,99 @@ from dotenv import load_dotenv
 load_dotenv()  # Load environment variables
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+#Helper function to refine the search and make it more intelligent
+import re
+
+def extract_keywords(query):
+    """Extracts important words from user query using regex"""
+    query = query.lower()
+    keywords = re.findall(r'\b\w{4,}\b', query)  # Finds words with 4+ letters
+    return keywords
+
+def search_sop(keywords):
+    """Finds SOPs that contain relevant keywords by extracting text from PDFs"""
+    matching_sops = []
+    
+    for sop in SOPDocument.objects.all():
+        sop_text = extract_text_from_pdf(sop.document.path).lower()  # ✅ Extract text from the PDF
+
+        for keyword in keywords:
+            if keyword in sop_text:
+                matching_sops.append(sop)
+                break  # ✅ Stop searching once a match is found
+
+    return matching_sops
+
+
+#end of helper function
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+import openai
+import os
+import fitz  # PyMuPDF for PDF extraction
+from sentence_transformers import SentenceTransformer, util
+from .models import SOPDocument
+from dotenv import load_dotenv
+import re
+
+# Load environment variables
+load_dotenv()
+
+# OpenAI API Key
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Initialize OpenAI Client
+openai_client = openai.Client(api_key=OPENAI_API_KEY)
+
+# Load embedding model for semantic search
+model = SentenceTransformer("all-MiniLM-L6-v2")
+
+def clean_text(text):
+    """Removes unwanted characters and formatting from extracted text."""
+    text = re.sub(r"#", "", text)  # Remove `#` symbols
+    text = re.sub(r"\n{2,}", "\n", text)  # Replace multiple newlines with a single newline
+    text = text.strip()  # Remove extra spaces
+    return text
+
+def extract_text_from_pdf(file_path):
+    """Extracts and cleans text from a PDF file."""
+    text = ""
+    try:
+        with fitz.open(file_path) as doc:
+            for page in doc:
+                text += page.get_text() + "\n"
+    except Exception as e:
+        print(f"Error extracting text from PDF: {e}")
+
+    return clean_text(text)  # ✅ Clean the extracted text before returning
+
+def find_most_relevant_sop_section(user_message):
+    """Finds the most relevant SOP section using semantic search."""
+    sop_texts = []
+    sop_files = SOPDocument.objects.all()
+
+    for sop in sop_files:
+        extracted_text = extract_text_from_pdf(sop.document.path)
+        sop_texts.append({"title": sop.title, "content": extracted_text})
+
+    if not sop_texts:
+        return None  # No SOPs available
+
+    # Embed user query and all SOP contents
+    query_embedding = model.encode(user_message, convert_to_tensor=True)
+    sop_embeddings = [model.encode(sop["content"], convert_to_tensor=True) for sop in sop_texts]
+
+    # Find the SOP with the highest similarity score
+    best_match_index = max(range(len(sop_embeddings)), key=lambda i: util.pytorch_cos_sim(query_embedding, sop_embeddings[i])[0][0])
+
+    return sop_texts[best_match_index]["content"]  # Return cleaned SOP content
 
 @csrf_exempt
+@login_required
 def sop_chatbot(request):
-    """Handles Chat Requests & Uses OpenAI to Answer Based on the Most Relevant SOP"""
+    """Handles Chat Requests & Uses OpenAI to Answer Based on the Most Relevant SOP."""
     if request.method == "POST":
         try:
             data = json.loads(request.body.decode("utf-8"))
@@ -105,38 +194,32 @@ def sop_chatbot(request):
             if not OPENAI_API_KEY:
                 return JsonResponse({"error": "OpenAI API key is missing"}, status=500)
 
-            # ✅ Find the most relevant SOP document
-            relevant_sop = find_relevant_sop(user_message)
-            if not relevant_sop:
+            # Find the most relevant SOP section
+            relevant_sop_text = find_most_relevant_sop_section(user_message)
+
+            if not relevant_sop_text:
                 return JsonResponse({"error": "No relevant SOP found for this query."}, status=400)
 
-            # ✅ Extract text from the relevant SOP
-            sop_text = extract_text_from_pdf(relevant_sop.document.path)
-
-            # ✅ Use OpenAI's New ChatCompletion API
-            client = openai.OpenAI(api_key=OPENAI_API_KEY)
-
-            response = client.chat.completions.create(
-                model="gpt-4",
-                #model="gpt-3.5-turbo",  # Switched to gpt-3.5-turbo
+            # Use OpenAI's latest API for response generation
+            response = openai_client.chat.completions.create(
+                model="gpt-4-turbo",  # ✅ Updated model name
                 messages=[
-                    {"role": "system", "content": f"Use this SOP to answer the question:\n{sop_text}"},
+                    {"role": "system", "content": f"Use the following SOP information to answer the user's question:\n\n{relevant_sop_text}"},
                     {"role": "user", "content": user_message}
                 ]
             )
 
-            return JsonResponse({"response": response.choices[0].message.content})
+            bot_response = response.choices[0].message.content.strip()
 
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON format"}, status=400)
-        except openai.AuthenticationError:
-            return JsonResponse({"error": "Invalid OpenAI API key"}, status=401)
-        except openai.OpenAIError as e:
-            return JsonResponse({"error": f"OpenAI API Error: {str(e)}"}, status=500)
+            # ✅ Clean the response from unnecessary symbols
+            bot_response = clean_text(bot_response)
+
+            return JsonResponse({"response": bot_response})
+
         except Exception as e:
-            return JsonResponse({"error": f"Internal Server Error: {str(e)}"}, status=500)
+            return JsonResponse({"error": str(e)}, status=500)
 
-    return JsonResponse({"error": "Invalid request method"}, status=405)
+
 
 #allows only admin to upload SOP
 from django.contrib.auth.decorators import login_required, user_passes_test
