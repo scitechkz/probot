@@ -4,27 +4,64 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SOP Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Chat Styles */
+        .chat-bubble {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin: 5px;
+        }
+        .user-message {
+            background-color: #4F46E5;
+            color: white;
+            align-self: flex-end;
+        }
+        .bot-message {
+            background-color: #E5E7EB;
+            color: black;
+            align-self: flex-start;
+        }
+    </style>
 </head>
-<body>
-    <h2>Chat with AI 🤖</h2>
-    
-    <div id="chatbox">
-        <input type="text" id="user-input" placeholder="Ask a question..." required>
-        <button id="ask-button">Ask</button>  
-        <button id="voice-button">🎤 Speak</button>  <!-- ✅ New voice input button -->
+<body class="bg-gray-100 flex flex-col h-screen">
+    <!-- Header -->
+    <header class="p-4 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-center shadow-md">
+        <h1 class="text-2xl font-bold">SOP Chatbot 🤖</h1>
+    </header>
+
+    <!-- Chat Container -->
+    <div id="chatbox" class="flex-1 p-4 flex flex-col space-y-3 overflow-y-auto">
+        <div class="chat-bubble bot-message">
+            👋 Hi! How can I assist you with SOPs today?
+        </div>
     </div>
 
-    <br>
-    <div id="chat-response"></div>
+    <!-- Input Section -->
+    <div class="p-4 bg-white shadow-md flex items-center">
+        <input type="text" id="user-input" placeholder="Ask a question..." required class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+        <button id="ask-button" class="ml-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">Ask</button>
+        <button id="voice-button" class="ml-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">🎤 Speak</button>
+    </div>
 
-    <!-- ✅ JavaScript for Voice Features -->
+    <div id="chat-response" class="p-4"></div>
+
+    <!-- ✅ JavaScript for Chat & Voice -->
     <script>
-        // Function to send user input to chatbot
         async function sendMessage(userInput) {
             if (!userInput) {
                 alert("Please enter a question!");
                 return;
             }
+
+            let chatbox = document.getElementById("chatbox");
+
+            // Add User Message
+            let userMessage = document.createElement("div");
+            userMessage.className = "chat-bubble user-message self-end";
+            userMessage.textContent = userInput;
+            chatbox.appendChild(userMessage);
 
             try {
                 let response = await fetch("/api/chatbot/", {
@@ -38,12 +75,12 @@
                 if (result.response) {
                     let botResponse = result.response;
 
-                    document.getElementById("chat-response").innerHTML += `
-                        <p><b>You:</b> ${userInput}</p>
-                        <p><b>Bot:</b> ${botResponse}</p>
-                    `;
+                    let botMessage = document.createElement("div");
+                    botMessage.className = "chat-bubble bot-message";
+                    botMessage.textContent = botResponse;
+                    chatbox.appendChild(botMessage);
 
-                    speakResponse(botResponse);  // ✅ AI reads response aloud
+                    speakResponse(botResponse);
                 } else {
                     alert("Error: " + result.error);
                 }
@@ -53,15 +90,15 @@
             }
 
             document.getElementById("user-input").value = "";
+            chatbox.scrollTop = chatbox.scrollHeight;
         }
 
-        // ✅ Add click event to "Ask" button
         document.getElementById("ask-button").addEventListener("click", function() {
             let userInput = document.getElementById("user-input").value.trim();
             sendMessage(userInput);
         });
 
-        // ✅ Voice Input (Speech-to-Text)
+        // Voice Input (Speech-to-Text)
         document.getElementById("voice-button").addEventListener("click", function() {
             let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
             recognition.lang = "en-US";
@@ -69,13 +106,13 @@
             recognition.onresult = function(event) {
                 let spokenText = event.results[0][0].transcript;
                 document.getElementById("user-input").value = spokenText;
-                sendMessage(spokenText);  // ✅ Send spoken question to chatbot
+                sendMessage(spokenText);
             };
 
             recognition.start();
         });
 
-        // ✅ Read Response (Text-to-Speech)
+        // Read Response (Text-to-Speech)
         function speakResponse(responseText) {
             let speech = new SpeechSynthesisUtterance(responseText);
             speech.lang = "en-US";
@@ -84,6 +121,8 @@
     </script>
 
     <br>
-    <a href="{% url 'home' %}">Back to Home</a>
+    <div class="text-center">
+        <a href="{% url 'home' %}" class="text-purple-600 hover:underline">Back to Home</a>
+    </div>
 </body>
 </html>

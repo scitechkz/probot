@@ -207,6 +207,7 @@ def sop_chatbot(request):
         try:
             data = json.loads(request.body.decode("utf-8"))
             user_message = data.get("message", "").strip()
+            is_voice = data.get("is_voice", False)  # Detect if the user is speaking
 
             if not user_message:
                 return JsonResponse({"error": "Message is required"}, status=400)
@@ -214,7 +215,7 @@ def sop_chatbot(request):
             # ✅ Check if we already have an answer for this query
             previous_response = get_previous_response(user_message)
             if previous_response:
-                return JsonResponse({"response": previous_response})  # ✅ Return saved answer
+                return JsonResponse({"response": previous_response, "is_voice": is_voice})
 
             # ✅ Find the most relevant SOP
             relevant_sop = find_relevant_sop(user_message)
@@ -239,10 +240,11 @@ def sop_chatbot(request):
             # ✅ Save interaction for future learning
             SOPInteraction.objects.create(user_query=user_message, sop_used=relevant_sop, ai_response=ai_response)
 
-            return JsonResponse({"response": ai_response})
+            return JsonResponse({"response": ai_response, "is_voice": is_voice})
 
         except Exception as e:
             return JsonResponse({"error": f"Internal Server Error: {str(e)}"}, status=500)
+
 #Allows users to rate the BOTs
 @csrf_exempt
 def feedback(request):
@@ -324,3 +326,30 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect("home")  # ✅ Redirect to homepage after logout
+
+#Analytics Dashboad for Admin
+from django.shortcuts import render
+from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Avg, Count
+from django.http import HttpResponseForbidden
+from .models import SOPAnalytics
+
+#@staff_member_required  # Restricts access to admin users
+@login_required
+@user_passes_test(is_admin)  # ✅ Only allow admin users
+
+def analytics_dashboard(request):
+    total_queries = SOPAnalytics.objects.count()
+    avg_response_time = SOPAnalytics.objects.aggregate(avg_time=Avg("response_time"))["avg_time"] or 0  # Handle None
+    top_queries = (
+        SOPAnalytics.objects.values("query")
+        .annotate(count=Count("query"))
+        .order_by("-count")[:5]
+    )
+
+    return render(request, "sop/analytics_dashboard.html", {
+        "total_queries": total_queries,
+        "avg_response_time": round(avg_response_time, 2),  # Round for better display
+        "top_queries": top_queries,
+    })
+

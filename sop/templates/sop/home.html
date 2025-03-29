@@ -3,20 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOP Chatbot</title>
+    <title>Home - SOP AI Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f9ff;
+            color: #333;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        h1 {
+            color: #007bff;
+        }
+        .links {
+            margin-top: 20px;
+        }
+        .links a {
+            display: block;
+            padding: 10px;
+            margin: 10px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .links a:hover {
+            background: #0056b3;
+        }
+        .ai-image {
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+            border-radius: 10px;
+        }
+    </style>
 </head>
 <body>
-    {% if user.is_authenticated %}
-    <p>Welcome, {{ user.username }}! (<a href="{% url 'logout' %}">Logout</a>)</p>
-
-    {% if user.is_admin %}
-        <a href="{% url 'upload_sop' %}">Upload SOP</a> |  <!-- ✅ Now only admins see this -->
-    {% endif %}
-
-    <a href="{% url 'chatbot_page' %}">Chat with AI</a>
-{% else %}
-    <p>You are not logged in. <a href="{% url 'login' %}">Login</a> or <a href="{% url 'signup' %}">Signup</a></p>
-{% endif %}
-
+    <div class="container">
+        <h1>Welcome to SOP AI Assistant</h1>
+        <p>Get instant answers from your SOP documents using AI-powered automation.</p>
+        
+        <img src="/static/images/ai-assistant.jpg" alt="AI Assistant" class="ai-image">
+        
+        {% if user.is_authenticated %}
+            <p>Welcome, {{ user.username }}! (<a href="{% url 'logout' %}" style="color: red;">Logout</a>)</p>
+            <div class="links">
+                <a href="{% url 'chatbot_page' %}">🤖 Chat with AI</a>
+                {% if user.is_admin %}
+                    <a href="{% url 'upload_sop' %}">📤 Upload SOP</a>
+                    <a href="{% url 'analytics_dashboard' %}">📊 SOP Analytics</a>
+                {% endif %}
+            </div>
+        {% else %}
+            <p>You are not logged in. <a href="{% url 'login' %}">Login</a> or <a href="{% url 'signup' %}">Signup</a></p>
+        {% endif %}
+    </div>
 </body>
 </html>

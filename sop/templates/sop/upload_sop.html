@@ -4,17 +4,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload SOP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h2>Upload SOP Document</h2>
-    
-    <form method="POST" enctype="multipart/form-data">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Upload</button>
-    </form>
+<body class="bg-gray-100 flex flex-col h-screen">
+    <!-- Header -->
+    <header class="p-4 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-center shadow-md">
+        <h2 class="text-2xl font-bold">Upload SOP Document 📄</h2>
+    </header>
 
-    <br>
-    <a href="{% url 'home' %}">Back to Home</a>
+    <!-- Upload Form -->
+    <div class="flex-1 flex items-center justify-center">
+        <form method="POST" enctype="multipart/form-data" class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg space-y-4">
+            {% csrf_token %}
+            
+            <!-- Drag & Drop Zone -->
+            <label class="block text-lg font-semibold text-gray-700">Select SOP File:</label>
+            <div id="drop-zone" class="border-2 border-dashed border-purple-500 rounded-lg p-6 text-center cursor-pointer bg-gray-50 hover:bg-gray-100">
+                <p class="text-gray-600">Drag & drop a file here or click to upload</p>
+                <input type="file" id="sop-file" name="sop-file" class="hidden" accept=".pdf,.docx">
+            </div>
+
+            <!-- Form Fields -->
+            <div id="file-preview" class="text-gray-700 hidden">
+                <p><strong>Selected File:</strong> <span id="file-name"></span></p>
+                <p><strong>Size:</strong> <span id="file-size"></span></p>
+            </div>
+
+            {{ form.as_p }}
+
+            <!-- Progress Bar -->
+            <div id="progress-container" class="hidden">
+                <div class="w-full bg-gray-300 rounded-full h-2">
+                    <div id="progress-bar" class="bg-purple-600 h-2 rounded-full" style="width: 0%;"></div>
+                </div>
+                <p id="progress-text" class="text-gray-600 text-sm mt-1"></p>
+            </div>
+
+            <!-- Upload Button -->
+            <button type="submit" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition">
+                Upload
+            </button>
+        </form>
+    </div>
+
+    <!-- Back Link -->
+    <div class="text-center mb-6">
+        <a href="{% url 'home' %}" class="text-purple-600 hover:underline">Back to Home</a>
+    </div>
+
+    <!-- JavaScript for Drag & Drop -->
+    <script>
+        const dropZone = document.getElementById("drop-zone");
+        const fileInput = document.getElementById("sop-file");
+        const filePreview = document.getElementById("file-preview");
+        const fileNameSpan = document.getElementById("file-name");
+        const fileSizeSpan = document.getElementById("file-size");
+        const progressContainer = document.getElementById("progress-container");
+        const progressBar = document.getElementById("progress-bar");
+        const progressText = document.getElementById("progress-text");
+
+        // Handle Click to Upload
+        dropZone.addEventListener("click", () => fileInput.click());
+
+        // Handle File Selection
+        fileInput.addEventListener("change", function(event) {
+            if (this.files.length > 0) {
+                displayFileDetails(this.files[0]);
+            }
+        });
+
+        // Handle Drag & Drop Upload
+        dropZone.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            dropZone.classList.add("bg-gray-200");
+        });
+
+        dropZone.addEventListener("dragleave", () => dropZone.classList.remove("bg-gray-200"));
+
+        dropZone.addEventListener("drop", (event) => {
+            event.preventDefault();
+            dropZone.classList.remove("bg-gray-200");
+
+            if (event.dataTransfer.files.length > 0) {
+                fileInput.files = event.dataTransfer.files;
+                displayFileDetails(fileInput.files[0]);
+            }
+        });
+
+        function displayFileDetails(file) {
+            filePreview.classList.remove("hidden");
+            fileNameSpan.textContent = file.name;
+            fileSizeSpan.textContent = (file.size / 1024).toFixed(2) + " KB";
+        }
+    </script>
 </body>
 </html>

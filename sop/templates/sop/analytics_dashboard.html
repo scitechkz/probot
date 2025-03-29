@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOP Analytics</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            color: white;
+            text-align: center;
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #16213e;
+            box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
+            border-radius: 10px;
+        }
+        h2 {
+            color: #00a8ff;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #0f3460;
+            border-radius: 8px;
+        }
+        .stats div {
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: #1b1b2f;
+            color: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #00a8ff;
+        }
+        th {
+            background: #007bff;
+            color: white;
+        }
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            text-decoration: none;
+            background: #00a8ff;
+            color: white;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        a:hover {
+            background: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>SOP Analytics Dashboard</h2>
+        <div class="stats">
+            <div>
+                <h3>{{ total_queries|default:"0" }}</h3>
+                <p>Total Queries</p>
+            </div>
+            <div>
+                <h3>{{ avg_response_time|default:"0.0" }}s</h3>
+                <p>Avg. Response Time</p>
+            </div>
+        </div>
+        <h3>Top 5 Most Frequent Queries</h3>
+        {% if top_queries %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Query</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for query in top_queries %}
+                        <tr>
+                            <td>{{ query.query }}</td>
+                            <td>{{ query.count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No queries recorded yet.</p>
+        {% endif %}
+        <a href="{% url 'home' %}">⬅ Back to Home</a>
+    </div>
+</body>
+</html>
