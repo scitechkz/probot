@@ -23,3 +23,24 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+
+#creates a learning model so the bot can self learn
+from django.db import models
+
+class SOPInteraction(models.Model):
+    user_query = models.TextField()
+    sop_used = models.ForeignKey(SOPDocument, on_delete=models.SET_NULL, null=True, blank=True)
+    ai_response = models.TextField()
+    feedback = models.IntegerField(null=True, blank=True)  # 1-5 rating
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+#fine tuning the models - This stores past queries and responses
+
+from django.db import models
+
+class SOPInteraction(models.Model):
+    user_query = models.TextField()
+    sop_used = models.ForeignKey(SOPDocument, on_delete=models.SET_NULL, null=True, blank=True)
+    ai_response = models.TextField()
+    feedback = models.IntegerField(null=True, blank=True)  # 1-5 rating
+    timestamp = models.DateTimeField(auto_now_add=True)

@@ -1,4 +1,6 @@
 from django.shortcuts import render
+from .models import SOPInteraction  # Import the model
+
 
 #create home page
 def home(request):
@@ -179,10 +181,28 @@ def find_most_relevant_sop_section(user_message):
 
     return sop_texts[best_match_index]["content"]  # Return cleaned SOP content
 
+#checks if we have a previous response
+from django.db.models import Q
+from difflib import SequenceMatcher  # For similarity checking
+
+def get_previous_response(user_message):
+    """Check if a similar question has been asked before."""
+    interactions = SOPInteraction.objects.all()
+    
+    for interaction in interactions:
+        similarity = SequenceMatcher(None, user_message.lower(), interaction.user_query.lower()).ratio()
+        if similarity > 0.8:  # 80% similarity threshold
+            return interaction.ai_response  # Return stored response
+    
+    return None  # No similar question found
+
+#end of the check
+
 @csrf_exempt
 @login_required
+@csrf_exempt
 def sop_chatbot(request):
-    """Handles Chat Requests & Uses OpenAI to Answer Based on the Most Relevant SOP."""
+    """Handles Chat Requests & Uses OpenAI to Answer Based on the Most Relevant SOP"""
     if request.method == "POST":
         try:
             data = json.loads(request.body.decode("utf-8"))
@@ -191,34 +211,63 @@ def sop_chatbot(request):
             if not user_message:
                 return JsonResponse({"error": "Message is required"}, status=400)
 
-            if not OPENAI_API_KEY:
-                return JsonResponse({"error": "OpenAI API key is missing"}, status=500)
+            # ✅ Check if we already have an answer for this query
+            previous_response = get_previous_response(user_message)
+            if previous_response:
+                return JsonResponse({"response": previous_response})  # ✅ Return saved answer
 
-            # Find the most relevant SOP section
-            relevant_sop_text = find_most_relevant_sop_section(user_message)
-
-            if not relevant_sop_text:
+            # ✅ Find the most relevant SOP
+            relevant_sop = find_relevant_sop(user_message)
+            if not relevant_sop:
                 return JsonResponse({"error": "No relevant SOP found for this query."}, status=400)
 
-            # Use OpenAI's latest API for response generation
-            response = openai_client.chat.completions.create(
-                model="gpt-4-turbo",  # ✅ Updated model name
+            # ✅ Extract text from SOP
+            sop_text = extract_text_from_pdf(relevant_sop.document.path)
+
+            # ✅ Use OpenAI to generate a response
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": f"Use the following SOP information to answer the user's question:\n\n{relevant_sop_text}"},
+                    {"role": "system", "content": f"Use this SOP to answer the question:\n{sop_text}"},
                     {"role": "user", "content": user_message}
                 ]
             )
 
-            bot_response = response.choices[0].message.content.strip()
+            ai_response = response.choices[0].message.content.strip()
 
-            # ✅ Clean the response from unnecessary symbols
-            bot_response = clean_text(bot_response)
+            # ✅ Save interaction for future learning
+            SOPInteraction.objects.create(user_query=user_message, sop_used=relevant_sop, ai_response=ai_response)
 
-            return JsonResponse({"response": bot_response})
+            return JsonResponse({"response": ai_response})
 
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            return JsonResponse({"error": f"Internal Server Error: {str(e)}"}, status=500)
+#Allows users to rate the BOTs
+@csrf_exempt
+def feedback(request):
+    """Stores user feedback on chatbot responses."""
+    if request.method == "POST":
+        data = json.loads(request.body.decode("utf-8"))
+        query = data.get("query", "").strip()
+        rating = data.get("rating")
 
+        if not query or not rating:
+            return JsonResponse({"error": "Query and rating are required"}, status=400)
+
+        try:
+            interaction = SOPInteraction.objects.filter(user_query=query).first()
+            if interaction:
+                interaction.feedback = rating
+                interaction.save()
+                return JsonResponse({"message": "Feedback recorded successfully"})
+            else:
+                return JsonResponse({"error": "No matching query found"}, status=400)
+
+        except Exception as e:
+            return JsonResponse({"error": f"Internal Server Error: {str(e)}"}, status=500)
+
+#end of feedback
 
 
 #allows only admin to upload SOP
