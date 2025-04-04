@@ -1,6 +1,11 @@
 from django.shortcuts import render
 from .models import SOPInteraction  # Import the model
 
+import os
+import openai
+
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+openai_client = openai.Client(api_key=OPENAI_API_KEY)
 
 #create home page
 def home(request):

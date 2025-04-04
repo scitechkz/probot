@@ -1,0 +1,29 @@
+#allows requirement.txt
+!requirements.txt
+# Ignore Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environments
+venv/
+
+
+# Ignore local settings
+*.sqlite3
+config/settings/local.py
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore media/uploads
+media/
+staticfiles/
+
+# Ignore IDE & OS-generated files
+*.swp
+.DS_Store
+.vscode/
+.idea/

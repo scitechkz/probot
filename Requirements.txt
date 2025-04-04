@@ -1,13 +1,22 @@
-Django>=4.2,<5.0
-djangorestframework>=3.14
-gunicorn>=21.2
-whitenoise>=6.6
-psycopg2-binary>=2.9  # If using PostgreSQL
-dj-database-url>=2.1
-django-environ>=0.10
-openai>=1.3  # For AI responses
-speechrecognition>=3.10  # For voice input
-pyttsx3>=2.90  # For text-to-speech
-Pillow>=9.4  # For image handling
-pdfplumber>=0.10  # For extracting text from SOP PDFs
-django-cors-headers>=4.3
+celery==5.3.1
+dj-database-url==2.3.0
+django-cors-headers==4.7.0
+django-environ==0.12.0
+django-filter==23.2
+djangorestframework-simplejwt==5.2.2
+git-filter-repo==2.47.0
+gunicorn==23.0.0
+openai==1.68.2
+pandas==2.1.4
+pdfplumber==0.11.6
+pip==25.0.1
+psycopg2-binary==2.9.10
+PyMuPDF==1.25.4
+python-dotenv==1.1.0
+pyttsx3==2.98
+redis==5.0.1
+sentence-transformers==4.0.1
+setuptools==65.5.0
+SpeechRecognition==3.14.2
+whitenoise==6.9.0
+
