@@ -2,13 +2,15 @@ version: '3'
 
 services:
   db:
-    image: postgres:15
-    container_name: sopchatbot_db
+    image: postgres:17
+    container_name: sop_db
     restart: always
+    env_file:
+      - .env # Load environment variables from .env
     environment:
-      POSTGRES_DB: ${DB_NAME} 
-      POSTGRES_USER: ${DB_USER} #
-      POSTGRES_PASSWORD: ${DB_PASSWORD} # Reference the password from .env
+      POSTGRES_DB: ${DB_NAME}        # Dexitatabase name from .env
+      POSTGRES_USER: ${DB_USER}      # Database user from .env
+      POSTGRES_PASSWORD: ${DB_PASSWORD} # Database password from .env
     ports:
       - "5432:5432"
     volumes:
@@ -16,16 +18,18 @@ services:
 
   web:
     build: .
-    container_name: sopchatbot_app
-    command: gunicorn --bind 0.0.0.0:8000 sopchatbot.wsgi:application
+    container_name: sop_app
+    command: gunicorn --bind 0.0.0.0:8000 --timeout 120 sopchatbot.wsgi:application
     volumes:
       - .:/app
     ports:
       - "8000:8000"
     depends_on:
       - db
+    env_file:
+      - .env # Load environment variables from .env
     environment:
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/sopchatbot_db # Reference the password from .env
+      DATABASE_URL: ${DATABASE_URL} # Reference the full DATABASE_URL from .env
 
 volumes:
   postgres_data:
