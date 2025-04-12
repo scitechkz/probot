@@ -3,6 +3,7 @@ from .views import home,upload_sop,chatbot_page,sop_chatbot
 from .views import signup_view, login_view, logout_view, home, upload_sop, chatbot_page, sop_chatbot
 from .views import analytics_dashboard
 
+
 urlpatterns = [
     path("", home, name="home"),  # ✅ Add homepage URL
      path("upload/", upload_sop, name="upload_sop"),  # ✅ Add SOP Upload URL

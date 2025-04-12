@@ -49,6 +49,8 @@
 
     <!-- ✅ JavaScript for Chat & Voice -->
     <script>
+        let isVoiceInput = false;  // Track whether the user is using voice input
+
         async function sendMessage(userInput) {
             if (!userInput) {
                 alert("Please enter a question!");
@@ -67,7 +69,7 @@
                 let response = await fetch("/api/chatbot/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: userInput })
+                    body: JSON.stringify({ message: userInput, is_voice: isVoiceInput })
                 });
 
                 let result = await response.json();
@@ -80,7 +82,10 @@
                     botMessage.textContent = botResponse;
                     chatbox.appendChild(botMessage);
 
-                    speakResponse(botResponse);
+                    // If the user is using voice input, speak the response
+                    if (isVoiceInput) {
+                        speakResponse(botResponse);
+                    }
                 } else {
                     alert("Error: " + result.error);
                 }
@@ -95,6 +100,7 @@
 
         document.getElementById("ask-button").addEventListener("click", function() {
             let userInput = document.getElementById("user-input").value.trim();
+            isVoiceInput = false;  // Set input to text mode
             sendMessage(userInput);
         });
 
@@ -106,6 +112,7 @@
             recognition.onresult = function(event) {
                 let spokenText = event.results[0][0].transcript;
                 document.getElementById("user-input").value = spokenText;
+                isVoiceInput = true;  // Set input to voice mode
                 sendMessage(spokenText);
             };
 
