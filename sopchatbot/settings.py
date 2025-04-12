@@ -39,6 +39,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'sopchatbot.urls'
@@ -94,7 +95,8 @@ USE_TZ = True
 
 # Static Files (CSS, JavaScript, Images)
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_ROOT = '/app/static'
+#STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 # Media Files
 MEDIA_URL = "/media/"
