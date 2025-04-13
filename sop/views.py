@@ -133,6 +133,38 @@ def find_relevant_sop(user_message):
     best_sop = sop_texts[best_index]
     return SOPDocument.objects.get(id=best_sop["id"])
 
+#new helper function
+def split_into_chunks(text, max_tokens=500, overlap=100):
+    """Split text into overlapping chunks."""
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    chunks = []
+    current_chunk = []
+
+    total_tokens = 0
+    for sentence in sentences:
+        sentence_tokens = len(sentence.split())
+        if total_tokens + sentence_tokens > max_tokens:
+            chunks.append(" ".join(current_chunk))
+            if overlap > 0:
+                overlap_sentences = current_chunk[-overlap:]
+                current_chunk = overlap_sentences + [sentence]
+                total_tokens = sum(len(s.split()) for s in current_chunk)
+            else:
+                current_chunk = [sentence]
+                total_tokens = sentence_tokens
+        else:
+            current_chunk.append(sentence)
+            total_tokens += sentence_tokens
+
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+
+    return chunks
+
+#end of helper function
+
+#new find_most relevant SOP
+
 def find_most_relevant_sop_section(user_message):
     sop_documents = SOPDocument.objects.all()
     if not sop_documents:
@@ -144,16 +176,26 @@ def find_most_relevant_sop_section(user_message):
     ]
 
     query_embedding = embedding_model.encode(user_message, convert_to_tensor=True)
-    sop_embeddings = [embedding_model.encode(sop["content"], convert_to_tensor=True) for sop in sop_texts]
 
-    best_index = max(range(len(sop_embeddings)), key=lambda i: util.pytorch_cos_sim(query_embedding, sop_embeddings[i])[0][0])
-    
-    best_sop = sop_texts[best_index]
-    sop_content = best_sop["content"]
+    best_score = -1
+    best_chunk = ""
+    best_sop_id = None
 
-    # Extract a relevant snippet from the document content for the response
-    snippet = sop_content[:500]  # Adjust the length of the snippet as needed
-    return snippet
+    for sop in sop_texts:
+        chunks = split_into_chunks(sop["content"])
+        chunk_embeddings = embedding_model.encode(chunks, convert_to_tensor=True)
+
+        similarities = util.pytorch_cos_sim(query_embedding, chunk_embeddings)[0]
+        best_chunk_idx = similarities.argmax().item()
+        score = similarities[best_chunk_idx].item()
+
+        if score > best_score:
+            best_score = score
+            best_chunk = chunks[best_chunk_idx]
+            best_sop_id = sop["id"]
+
+    return best_chunk if best_chunk else None
+
 
 
 # ========== CHATBOT VIEW ==========
@@ -163,6 +205,9 @@ def find_most_relevant_sop_section(user_message):
 def sop_chatbot(request):
     if request.method == "POST":
         try:
+            import time
+            start_time = time.time()  # ⏱️ Start timing
+
             data = json.loads(request.body.decode("utf-8"))
             user_message = data.get("message", "").strip()
             is_voice = data.get("is_voice", False)
@@ -172,6 +217,13 @@ def sop_chatbot(request):
 
             previous_response = get_previous_response(user_message)
             if previous_response:
+                # Log this interaction too
+                response_time = time.time() - start_time
+                SOPAnalytics.objects.create(
+                    user=request.user,
+                    query=user_message,
+                    response_time=response_time,
+                )
                 return JsonResponse({"response": previous_response, "is_voice": is_voice})
 
             relevant_sop = find_relevant_sop(user_message)
@@ -196,11 +248,19 @@ def sop_chatbot(request):
 
                 response_message = ai_response
 
-            # Return the response
+            # ⏱️ Log analytics
+            response_time = time.time() - start_time
+            SOPAnalytics.objects.create(
+                user=request.user,
+                query=user_message,
+                response_time=response_time,
+            )
+
             return JsonResponse({"response": response_message, "is_voice": is_voice})
 
         except Exception as e:
             return JsonResponse({"error": f"Server Error: {str(e)}"}, status=500)
+
 
 
 # ========== FEEDBACK VIEW ==========
@@ -229,7 +289,25 @@ def feedback(request):
 
 from django.shortcuts import render
 
+#analytics part
 # Make sure this view exists in views.py
+from django.shortcuts import render
+from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Avg, Count
+from django.http import HttpResponseForbidden
+from .models import SOPAnalytics
+@login_required
+@user_passes_test(is_admin)  # ✅ Only allow admin users
 def analytics_dashboard(request):
-    # Your logic here
-    return render(request, 'analytics_dashboard.html')
+    total_queries = SOPAnalytics.objects.count()
+    avg_response_time = SOPAnalytics.objects.aggregate(avg_time=Avg("response_time"))["avg_time"] or 0  # Handle None
+    top_queries = (
+        SOPAnalytics.objects.values("query")
+        .annotate(count=Count("query"))
+        .order_by("-count")[:5]
+    )
+    return render(request, "sop/analytics_dashboard.html", {
+        "total_queries": total_queries,
+        "avg_response_time": round(avg_response_time, 2),  # Round for better display
+        "top_queries": top_queries,
+    })
