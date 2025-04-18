@@ -65,6 +65,7 @@ WSGI_APPLICATION = 'sopchatbot.wsgi.application'
 # Database Configuration
 import dj_database_url
 DATABASES = {
+  
     'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
 }
 
@@ -95,9 +96,11 @@ USE_TZ = True
 
 # Static Files (CSS, JavaScript, Images)
 STATIC_URL = "/static/"
-STATIC_ROOT = '/app/static'
-#STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+#STATIC_ROOT = '/app/static' # this is for the container
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+import os
 
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static"),]  # Ensures Django can find the static files in development- Not required in production
 # Media Files
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
