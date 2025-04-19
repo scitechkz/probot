@@ -49,23 +49,27 @@ def signup_view(request):
 
 def login_view(request):
     if request.method == "POST":
-        form = LoginForm(request.POST)
+        form = LoginForm(request, data=request.POST)  # Note the added 'request'
         if form.is_valid():
-            user = authenticate(
-                request, 
-                username=form.cleaned_data["username"],
-                password=form.cleaned_data["password"]
-            )
-            if user:
-                login(request, user)
-                return redirect("home")
+            user = form.get_user()
+            login(request, user)
+            return redirect("home")
+        else:
+            # Add error messages to the template context
+            return render(request, "sop/login.html", {
+                "form": form,
+                "error": "Invalid username or password"  # Explicit error message
+            })
     else:
         form = LoginForm()
     return render(request, "sop/login.html", {"form": form})
 
+
 def logout_view(request):
     logout(request)
-    return redirect("home")
+    # Clear session completely
+    request.session.flush()  
+    return redirect('home')
 
 
 # ========== SOP UPLOAD ==========
